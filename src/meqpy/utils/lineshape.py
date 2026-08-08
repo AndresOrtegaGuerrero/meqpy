@@ -1,3 +1,4 @@
+from typing import Callable
 from numbers import Real
 import numpy as np
 from scipy.special import erf
@@ -10,6 +11,38 @@ class LineShape(str, ValidatedEnum):
     GAUSS = "gaussian"
     LOR = "lorentzian"
     DIRAC = "dirac"
+
+
+def evaluate_lineshape(
+    lineshape: Callable[[np.ndarray], np.ndarray], x: np.ndarray
+) -> np.ndarray:
+    """Call the custom lineshape function and sanity check output."""
+
+    require_type(lineshape, Callable, "lineshape")
+
+    try:
+        array_out = lineshape(x)
+    except Exception as exc:
+        raise ValueError(
+            "Custom lineshape function raised an exception when called "
+            f"with an np.ndarray: {exc}"
+        ) from exc
+
+    require_type(array_out, np.ndarray, "Output of lineshape")
+    if not np.issubdtype(array_out.dtype, np.floating):
+        raise TypeError(
+            "Output of custom lineshape must be array of float, "
+            f"but dtype of array is {array_out.dtype}"
+        )
+
+    if array_out.shape != x.shape:
+        raise ValueError(
+            "Custom lineshape function must return an array of the same "
+            f"shape as its input (broadcasting elementwise), but got shape "
+            f"{array_out.shape} for input shape {x.shape}."
+        )
+
+    return array_out
 
 
 def lineshape_integral(lineshape: LineShape | str, x: float | np.ndarray, hwhm: Real):
